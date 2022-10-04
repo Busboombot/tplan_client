@@ -12,7 +12,7 @@ from tplan_client.proto import SyncProto
 from random import randint
 
 #packet_port = '/dev/cu.usbmodem64213801'  # Production
-packet_port = '/dev/cu.usbmodem64213901' # Test
+packet_port = '/dev/cu.usbmodem_Busbot_ss0011' # Test
 
 # encoder_port = '/dev/cu.usbmodem6387471'
 #encoder_port = '/dev/cu.usbmodem63874601'  # Production
