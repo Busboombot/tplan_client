@@ -94,7 +94,6 @@ class TestSerial(unittest.TestCase):
 
         p.update()
 
-
     def test_simple_r_1_move(self):
         """A simple move with 1 axis"""
 
@@ -112,7 +111,9 @@ class TestSerial(unittest.TestCase):
         p.run()
         s = d['x_1sec']
 
+
         for i in range(4):
+
             p.rmove((s,s,s))
             p.rmove((-s,-s,-s))
             p.runout(cb, timeout=1);

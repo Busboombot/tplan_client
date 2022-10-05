@@ -126,19 +126,6 @@ class TestSerial(unittest.TestCase):
         p.update(cb=cb, timeout=1)
 
 
-    def test_open_poll(self):
-        def cb(p, m):
-            print(m)
-
-        p = self.init(600, 'axes6', a=.3, usteps=10, use_encoder=True,
-                      highvalue=OutVal.HIGH, outmode=OutMode.OUTPUT_OPENDRAIN, period=5)
-
-        p.run()
-        p.stop()
-
-        while True:
-            p.runout(cb, timeout=1)
-
     def test_run_axis(self):
 
         def cb(p, m):
@@ -238,17 +225,18 @@ class TestSerial(unittest.TestCase):
 
         logging.basicConfig(level=logging.DEBUG)
 
-        d = make_axes(1000, 1, usteps=16, steps_per_rotation=200)
+        d = make_axes(1000, 1, usteps=10, steps_per_rotation=200)
 
         p = SyncProto(packet_port, None, baudrate)
-        p.config(4, self.ENABLE_OUTPUT, False, False, axes=d['axes1']);
+        p.config(4, self.ENABLE_OUTPUT, False, False, axes=d['axes3']);
 
+        p.info()
         p.run()
         s = d['x_1sec']
 
         for i in range(100):
-            p.rmove((s,))
-            p.rmove((-s,))
+            p.rmove((s,s,s))
+            p.rmove((-s,-s,-s))
             p.runout(cb, timeout=1);
 
         p.info()
