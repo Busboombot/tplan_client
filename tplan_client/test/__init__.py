@@ -36,6 +36,7 @@ def make_axes(rpm, accel, usteps=1, steps_per_rotation=200,
         "axes3": [AxisConfig(0, *_axes['a']), AxisConfig(1, *_axes['z']), AxisConfig(2, *_axes['b'])],
         "axes6": [AxisConfig(i, *e) for i, e in enumerate(_axes.values())],
         "left":  [AxisConfig(0, *_axes['b']), AxisConfig(1, *_axes['a']), AxisConfig(2, *_axes['x'])],
+        "right": [AxisConfig(0, *_axes['y']), AxisConfig(1, *_axes['z']), AxisConfig(2, *_axes['c'])],
 
         "x_1sec": rpm_to_usps(rpm, usteps),
         "mspr": usteps * steps_per_rotation,  # microsteps per rotation
