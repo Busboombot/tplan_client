@@ -69,7 +69,6 @@ class TestSerial(unittest.TestCase):
         p = SyncProto(packet_port, None)
         p.run()
 
-
     def test_info(self):
         """Test changing the configuration"""
 
@@ -95,133 +94,6 @@ class TestSerial(unittest.TestCase):
 
         p.update()
 
-    def test_info_2(self):
-
-        def cb(p, m):
-            print(m)
-
-        logging.basicConfig(level=logging.DEBUG)
-
-        p = self.init(100, 'axes1', a=0.1, use_encoder=False)
-        p.reset()
-
-        p.run()
-        sleep(1)
-        p.stop()
-        p.info()
-        p.rmove((10000,))
-        sleep(1)
-        p.run()
-        sleep(1)
-        p.stop()
-
-        p.update(cb=cb, timeout=1)
-
-
-    def test_open_poll(self):
-        def cb(p, m):
-            print(m)
-
-        p = self.init(600, 'axes6', a=.3, usteps=10, use_encoder=True,
-                      highvalue=OutVal.HIGH, outmode=OutMode.OUTPUT_OPENDRAIN, period=5)
-
-        p.run()
-        p.stop()
-
-        while True:
-            p.runout(cb, timeout=1)
-
-    def test_run_axis(self):
-
-        def cb(p, m):
-            if m.name != 'MESSAGE':
-                print(m)
-
-        p = self.init(800, 'axes6', a=.3, usteps=10, use_encoder=True,
-                      highvalue=OutVal.HIGH, outmode=OutMode.OUTPUT_OPENDRAIN,
-                      period=5)
-
-        r = p.mspr
-        p.reset()
-        p.run()
-
-        s = p.x_1sec * 1
-
-        axis = 3
-        try:
-            while True:
-                for i in range(10):
-                    p.rmove({axis: s})
-                    p.rmove({axis: -s})
-                    p.runout(cb)
-        except KeyboardInterrupt:
-            p.runout()
-
-        p.reset()
-
-
-    # noinspection PyTypeChecker
-    def test_simple_r_move(self):
-
-        def cb(p, m):
-            if m.name != 'MESSAGE':
-                print(m)
-
-        p = self.init(1000, 'axes6', a=.3, usteps=10, use_encoder=True,
-                      highvalue=(OutVal.HIGH, OutVal.HIGH, OutVal.LOW),
-                      segment_pin=27, limit_pint=29,
-                      outmode=OutMode.OUTPUT, period=5
-                      )
-        p.reset()
-        p.run()
-
-        r = p.mspr
-        s = p.x_1sec
-
-        # Random Move, forward or back 1/2 rodataion.
-        rr = randint(int(-r / 2.5), int(r / 2.5))
-        p.rmove((rr,) * 6)
-        p.runout()
-
-        def find_limit(p, encoder=0, direction_mod=1):
-
-            r = p.mspr
-
-            lc = p.pollEncoders().encoders[encoder].limit_code
-            if lc == LimitCode.LL:
-                direction = -1 * direction_mod
-            elif lc == LimitCode.HH:
-                direction = +1 * direction_mod
-            else:
-                assert False
-
-            # Step toward the LH limit
-            for i in range(200):
-                p.hmove((direction * r / 200,) * 6)
-
-            p.runout()
-
-        find_limit(p, 0)
-
-        # Now we've found the limit, but to get an accurate
-        # reading, we always need to read it from the same side.
-
-        p.rmove((r / 20,) * 6)
-        p.runout()
-
-        lc = p.pollEncoders().encoders[0].limit_code
-
-        # Step back toward the LH limit
-        for i in range(40):
-            p.hmove((-1 * r / 400,) * 6)
-        p.runout()
-
-        print("!!!", lc)
-
-        print(p.pollEncoders().encoders[0])
-        p.zero()
-        p.runout()
-
     def test_simple_r_1_move(self):
         """A simple move with 1 axis"""
 
@@ -230,17 +102,17 @@ class TestSerial(unittest.TestCase):
 
         logging.basicConfig(level=logging.DEBUG)
 
-        d = make_axes(1000, 1, usteps=16, steps_per_rotation=200)
+        d = make_axes(1000, 1, usteps=10, steps_per_rotation=200)
 
         p = SyncProto(packet_port, None, baudrate)
-        p.config(4, self.ENABLE_OUTPUT, False, False, axes=d['axes1']);
+        p.config(4, self.ENABLE_OUTPUT, False, False, axes=d['left']);
 
         p.run()
         s = d['x_1sec']
 
-        for i in range(4):
-            p.rmove((s,))
-            p.rmove((-s,))
+        for i in range(5):
+            p.rmove((s,s,s))
+            p.rmove((-s,-s,-s))
             p.runout(cb, timeout=1);
 
         p.info()
