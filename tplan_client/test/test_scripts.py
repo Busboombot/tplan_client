@@ -14,6 +14,7 @@ from random import randint
 #packet_port = '/dev/cu.usbmodem64213801'  # Production
 packet_port = '/dev/cu.usbmodem_Busbot_ss0011' # Test
 
+encoder_port = None
 # encoder_port = '/dev/cu.usbmodem6387471'
 #encoder_port = '/dev/cu.usbmodem63874601'  # Production
 
@@ -26,7 +27,7 @@ logging.basicConfig(level=logging.DEBUG)
 # Tuples are: step pin, dir pin, enable pin, max_v, max_a
 
 class TestSerial(unittest.TestCase):
-    # Determines wether the steppers are enables with an output value of high or low
+    # Determines whether the steppers are enables with an output value of high or low
     # Different for different stepper drivers
     ENABLE_OUTPUT = False
 
@@ -37,7 +38,7 @@ class TestSerial(unittest.TestCase):
         pass
 
     def init(self, v=800, axes_name='axes1', usteps=16, a=.1,
-             highvalue=OutVal.HIGH, outmode=OutMode.OUTPUT_OPENDRAIN,
+             highvalue=OutVal.HIGH, outmode=OutMode.OUTPUT,
              segment_pin=27, limit_pint=29, period=4,
              use_encoder=True):
 
@@ -54,29 +55,20 @@ class TestSerial(unittest.TestCase):
 
         return p
 
-    def rand_header(self):
-
-        from random import randint
-        return CommandHeader(seq=randint(0, 255), code=randint(0, 255))
-
-    def test_read_message(self):
-
-        p = SyncProto(packet_port, None)
-
-        while True:
-            p.update_ser()
-            for m in p:
-                if cb:
-                    cb(p, m)
-
     def test_echo(self):
         """Test changing the configuration"""
 
         p = SyncProto(packet_port, None)
-
         p.send_command(CommandCode.ECHO, 'This is the payload')
 
         p.runout(lambda p, m : print(m, m.payload), timeout=1)
+
+    def test_run(self):
+        """Test changing the configuration"""
+
+        p = SyncProto(packet_port, None)
+        p.run()
+
 
     def test_info(self):
         """Test changing the configuration"""
@@ -86,7 +78,6 @@ class TestSerial(unittest.TestCase):
 
         p = SyncProto(packet_port, None, timeout=1)
 
-        p.echo("Here is the message")
         p.info()
 
         p.update(cb, 1)
@@ -96,8 +87,9 @@ class TestSerial(unittest.TestCase):
 
         p = SyncProto(packet_port, None)
 
-        d = make_axes(500, .1, usteps=16, steps_per_rotation=200)
+        d = make_axes(500, .1, usteps=10, steps_per_rotation=200)
         p.config(4, 18, 32, False, False, axes=d['axes3']);
+        p.info()
 
         p.info()
 
@@ -246,7 +238,7 @@ class TestSerial(unittest.TestCase):
         p.run()
         s = d['x_1sec']
 
-        for i in range(100):
+        for i in range(4):
             p.rmove((s,))
             p.rmove((-s,))
             p.runout(cb, timeout=1);

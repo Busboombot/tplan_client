@@ -48,13 +48,16 @@ class CommandCode(IntEnum):
     AMOVE = 12  # a normal movement segment
     JMOVE = 13  # a normal movement segment
     HMOVE = 14  # a normal movement segment
+    VMOVE = 15
 
     RUN = 21
     STOP = 22
     RESET = 23
     ZERO = 24
-    CONFIG = 25  # Set configuration
-    AXES = 26  # Set configuration for an axis
+    SET = 25
+
+    CONFIG = 31 # Reset the configuration
+    AXES = 32 # Configure an axis
 
     MESSAGE = 91  # Payload is a message; the next packet is text
     ERROR = 92  # Some error
