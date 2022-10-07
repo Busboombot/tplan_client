@@ -101,7 +101,8 @@ class SyncProto(object):
         if self.enc_ser:
             self.sel.register(self.enc_ser, selectors.EVENT_READ, self.read_encoder_message)
 
-        self.queue = deque(maxlen=100)
+        self.raw_queue = deque()
+        self.raw_queue = deque() # handled queue
 
     def read_stepper_message(self, ser):
         data = ser.read_until(TERMINATOR)
@@ -134,7 +135,7 @@ class SyncProto(object):
                 if m.code in (CommandCode.ACK, CommandCode.ECHO):
                     self.last_ack = m.seq
 
-                self.queue.append(m)
+                self.raw_queue.append(m)
 
         return len(events)
 
@@ -173,8 +174,8 @@ class SyncProto(object):
         while True:
             self.update_ser_until_empty()
 
-            while (len(self.queue) > 0):
-                m = self.queue.popleft();
+            while (len(self.raw_queue) > 0):
+                m = self.raw_queue.popleft();
 
                 r = self.handle_message(m)
 
@@ -196,7 +197,7 @@ class SyncProto(object):
         m.recieve_time = time()
         handled = False
 
-        if m.code in (CommandCode.ACK, CommandCode.NACK, CommandCode.ECHO):
+        if m.code in (CommandCode.ACK, CommandCode.NACK, CommandCode.ECHO, CommandCode.ALIVE):
             # Handle the case where the seq ids wrap around
             self.last_ack = max( self.last_ack, m.seq) if abs(self.last_ack - m.seq) < 2**15 else m.seq
 
@@ -209,9 +210,12 @@ class SyncProto(object):
 
             return True
 
-        elif m.code in (CommandCode.ACK, CommandCode.DONE, CommandCode.EMPTY, CommandCode.ZERO):
+        elif m.code in (CommandCode.ACK, CommandCode.DONE, CommandCode.EMPTY,
+                        CommandCode.ZERO, CommandCode.ALIVE):
 
             m.payload = self.current_state = CurrentState(m.payload)
+            self.empty = self.current_state.empty
+            self.running = self.current_state.running
 
             for p, ax in zip(self.current_state.positions, self.axis_state):
                 ax.spos = p
@@ -240,19 +244,17 @@ class SyncProto(object):
                         ax.hl_limit = ax.last_limit = ax.epos
 
             return True
-        elif m.code in ( CommandCode.NACK):
+
+        elif m.code in ( CommandCode.NACK, ):
             return True
 
         return False
 
     def runout(self, cb=None, timeout=False):
 
-        if not self.running:
-            self.run()
-
         self.update(cb, timeout)
 
-    def runempty(self, cb=None, timeout=0):
+    def runempty(self, cb=None, timeout=1):
         """ Update and process messages until the step controller
         reports and empty queue, or until timeout expires
         :param cb:
@@ -323,12 +325,9 @@ class SyncProto(object):
 
         while True:
             try:
-                yield self.queue.popleft()
+                yield self.raw_queue.popleft()
             except IndexError:
                 return
-
-
-
 
 
     @property
@@ -405,6 +404,10 @@ class SyncProto(object):
         "A homing move, which will stop when it gets to a limit. "
         self._move(CommandCode.HMOVE, x, t=0)
 
+    def vmove(self, t: float, x: Union[List[Any], Tuple[Any], Dict]):
+        "A homing move, which will stop when it gets to a limit. "
+        self._move(CommandCode.VMOVE, x, t=t)
+
     def jog(self, t: float, x: Union[List[Any], Tuple[Any], Dict]):
         """Jog move. A jog move replaces the last move on the (step generator side)
         planner, then becomes a regular relative move. """
@@ -414,17 +417,21 @@ class SyncProto(object):
         self.running = True
         self.send_command(CommandCode.RUN, payload=payload)
 
+    def noop(self):
+        self.send_command(CommandCode.NOOP)
+
+    def queue(self):
+        self.send_command(CommandCode.QUEUE)
+
     def run(self):
-        self.running = True
         self.send_command(CommandCode.RUN)
 
     def stop(self):
-        self.running = False
         self.send_command(CommandCode.STOP)
 
     def info(self):
         self.send_command(CommandCode.INFO)
-        self.update()
+
 
     def reset(self):
         self.runout()

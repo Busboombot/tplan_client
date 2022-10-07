@@ -195,7 +195,7 @@ class EncoderReader():
 
 
     def get(self, block=True, timeout=1):
-        return self.reader.protocol.queue.get(block=block, timeout=timeout)
+        return self.reader.protocol.raw_queue.get(block=block, timeout=timeout)
 
     def __enter__(self):
         self.reader.start();

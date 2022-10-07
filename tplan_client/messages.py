@@ -64,6 +64,9 @@ class CommandCode(IntEnum):
     ECHO = 93  # Echo the incomming header
     DEBUG = 94  # Echo the incomming header
     INFO = 95  # Send back info messages about state and condition
+    QUEUE = 96  # Print out the movement queue
+    SYNC = 96  # Sync state
+    ALIVE = 98 # Step controller tells client it is still alive.
     NOOP = 99  # Does nothing, but does get ACKed
 
     def __repr__(self):
@@ -197,7 +200,8 @@ class MoveCommand(object):
         self.t = int(round(t * TIMEBASE))  # Convert to integer microseconds
 
         if code not in (CommandCode.AMOVE, CommandCode.RMOVE,
-                        CommandCode.JMOVE, CommandCode.HMOVE):
+                        CommandCode.JMOVE, CommandCode.HMOVE,
+                        CommandCode.VMOVE):
             raise BadMoveCodeError("Bad Code {}".format(code))
 
         self.header = CommandHeader(seq=0, code=code)
@@ -348,8 +352,9 @@ class CurrentState(object):
     msg_fmt = ('<' +
                'i' +  # queue_length
                'I' +  # queue_time
-               '6i'  # stepper_postitions
-               '6i'  # planner_postitions
+               '6i' +  # stepper_postitions
+               '6i' + # planner_postitions
+               'I' # Flags
                )
 
     size = struct.calcsize(msg_fmt)
@@ -357,14 +362,22 @@ class CurrentState(object):
     def __init__(self, b=None):
 
         if b:
-            self.queue_length, self.queue_time, *positions = struct.unpack(self.msg_fmt, b)
+            self.queue_length, self.queue_time, *positions, self.flags = struct.unpack(self.msg_fmt, b)
         else:
             self.queue_length, self.queue_time, *positions = 0, 0, []
 
         self.positions, self.planner_positions = positions[:6], positions[6:]
 
+    @property
+    def running(self):
+        return bool(self.flags & 1)
+
+    @property
+    def empty(self):
+        return bool(self.flags & 2)
+
     def __str__(self):
-        return f"[ l{self.queue_length} t{self.queue_time} {self.positions} ]"
+        return f"[ l{self.queue_length} t{round(self.queue_time/1e6, 4)} {self.positions} E={self.empty}  R={self.running}]"
 
 
 encoder_msg_fmt = (

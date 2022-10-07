@@ -1,47 +1,63 @@
 import logging
 import unittest
-# from trajectory.proto import PacketProto
-from time import sleep, time
 
-from test import make_axes
-from tplan_client.joystick import PygameJoystick
+from tplan_client.messages import *
+from tplan_client.joystick import *
 from tplan_client.proto import SyncProto
-from . import TestStepper
-
-packet_port = '/dev/cu.usbmodem64213801'  # Production
-encoder_port = '/dev/cu.usbmodem63874601'  # Production
-baudrate = 115200
+from tplan_client.test import make_axes
 
 logging.basicConfig(level=logging.DEBUG)
 from tplan_client.messages import OutMode
 
-class TestComplex(TestStepper):
+packet_port = '/dev/cu.usbmodem_Busbot_ss0011'  # Test
+encoder_port = None
+baudrate = 115200  # 20_000_000
+
+
+def cb(p, m):
+    if m.code != CommandCode.ALIVE:
+        print(m, "E=", p.empty, "R=", p.running, m.payload)
+
+# Different maps for each max speed
+freq_map = [
+    mkmap(0, 1, 0, 600),
+    mkmap(0, 1, 0, 3000),
+    mkmap(0, 1, 0, 8000),
+    mkmap(0, 1, 0, 11000),
+    mkmap(0, 1, 0, 15000)
+]
+
+class TestJoystick(unittest.TestCase):
 
     def test_joystick(self):
-
+        from time import time
 
         def cb(p, m):
             if m.name != 'MESSAGE':
                 print(m)
 
-        p = self.init(packet_port, encoder_port,
-                      300, 'axes6', a=1, usteps=10, use_encoder=False,
-                      outmode=OutMode.OUTPUT_OPENDRAIN, period=5
-                      )
+        def get_js_move():
+            for e in PygameJoystick(t=.3):
+                button = max([0] + e.button)
+                m = freq_map[button]
+                yield [int(m(a)) for a in e.axes]
+
+
+        logging.basicConfig(level=logging.DEBUG)
+
+        p = SyncProto(packet_port, None)
+
+        d = make_axes(500, .1, usteps=10, steps_per_rotation=200)
+        p.config(4, 18, 32, False, False, axes=d['axes3']);
+
         p.reset()
         p.run()
 
-        r = p.mspr
-        s = p.x_1sec
-        jog_interval = .1
-
-
-        for e in PygameJoystick(t=.1):
-            moves = [a / 1000 * s for a in e.axes]
-            print(moves)
-            p.jog(jog_interval * 2, moves)
-
-            p.runout(cb)
+        last = time()
+        for move in get_js_move():
+            p.jog(.2, move[:3])
+            print(round(last - time(), 3), move[:3])
+            last = time()
 
         p.info()
         p.stop()
