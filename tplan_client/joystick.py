@@ -93,7 +93,6 @@ class PygameJoystick(object):
                 return
 
 
-
             if event and event.type in joy_events:
                 i = event.joy
                 j = self.joysticks[i]
@@ -106,7 +105,6 @@ class PygameJoystick(object):
 
                 axes = [p(axis) for axis in range(j.get_numaxes())] + \
                        [copysign(abs(h), h) for h in hats[0]]
-
 
             else:
                 button = self.last.button

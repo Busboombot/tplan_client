@@ -169,7 +169,7 @@ class TestSerial(unittest.TestCase):
 
         p = SyncProto(packet_port, None, baudrate)
         d = make_axes(1000, 1, usteps=10, steps_per_rotation=200)
-        p.config(4, self.ENABLE_OUTPUT, False, False, axes=d['right']);
+        p.config(4, self.ENABLE_OUTPUT, False, False, axes=d['left']);
 
         p.info()
         p.run()
@@ -187,8 +187,8 @@ class TestSerial(unittest.TestCase):
             p.vmove(t,[s / 10] * 3)
             p.vmove(t,[-s / 10] * 3)
 
-        for i in range(100):
-            p.jog(.2, [20_000]*3)
+        for i in range(10):
+            p.vmove(.5, [-2_000]*3)
             sleep(.2)
             #p.update(cb)
 
