@@ -5,7 +5,6 @@ from tplan_client.messages import *
 from tplan_client.proto import SyncProto
 from tplan_client.test import make_axes
 
-
 packet_port = '/dev/cu.usbmodem_Busbot_ss0011'  # Test
 encoder_port = None
 baudrate = 115200  # 20_000_000
@@ -17,8 +16,9 @@ logging.basicConfig(level=logging.DEBUG)
 # Tuples are: step pin, dir pin, enable pin, max_v, max_a
 
 def cb(p, m):
-    #if m.code != CommandCode.ALIVE:
+    # if m.code != CommandCode.ALIVE:
     print(m, "E=", p.empty, "R=", p.running, m.payload)
+
 
 class TestSerial(unittest.TestCase):
     # Determines whether the steppers are enables with an output value of high or low
@@ -83,7 +83,7 @@ class TestSerial(unittest.TestCase):
         """Test changing the configuration"""
 
         def cb(p, m, handled):
-            print(m, "E=",p.empty, "R=",p.running, m.payload)
+            print(m, "E=", p.empty, "R=", p.running, m.payload)
 
         p = SyncProto(packet_port, None)
         p.queue()
@@ -113,9 +113,9 @@ class TestSerial(unittest.TestCase):
 
     def test_runout(self):
         """Test changing the configuration"""
-        def cb(p, m, handled):
-            print(m, "E=",p.empty, "R=",p.running, m.payload)
 
+        def cb(p, m, handled):
+            print(m, "E=", p.empty, "R=", p.running, m.payload)
 
         p = SyncProto(packet_port, None)
 
@@ -132,7 +132,7 @@ class TestSerial(unittest.TestCase):
         p.config(4, self.ENABLE_OUTPUT, False, False, axes=d['right']);
 
         p.stop()
-        s = d['x_1sec']/2
+        s = d['x_1sec'] / 2
 
         for i in range(4):
             p.rmove((s, s, s))
@@ -149,11 +149,11 @@ class TestSerial(unittest.TestCase):
         d = make_axes(1000, 1, usteps=10, steps_per_rotation=200)
 
         p = SyncProto(packet_port, None, baudrate)
-        p.config(4, self.ENABLE_OUTPUT, False, False, axes=d['right']);
+        p.config(4, self.ENABLE_OUTPUT, False, False, axes=d['left']);
 
         p.info()
         p.run()
-        s = d['x_1sec']/2
+        s = d['x_1sec'] / 2
 
         for i in range(4):
             p.rmove((s, s, s))
@@ -177,23 +177,30 @@ class TestSerial(unittest.TestCase):
         t = .2
 
         p.run()
-        def stepped_v():
-            p.vmove(t,[s] * 3)
-            p.vmove(t,[-s] * 3)
-            p.vmove(t,[s/2] * 3)
-            p.vmove(t,[-s/2] * 3)
-            p.vmove(t,[s/4] * 3)
-            p.vmove(t,[-s/4] * 3)
-            p.vmove(t,[s / 10] * 3)
-            p.vmove(t,[-s / 10] * 3)
 
-        for i in range(10):
-            p.vmove(.5, [-2_000]*3)
-            sleep(.2)
-            #p.update(cb)
+        def stepped_v():
+            p.vmove(t, [s] * 3)
+            p.vmove(t, [-s] * 3)
+            p.vmove(t, [s / 2] * 3)
+            p.vmove(t, [-s / 2] * 3)
+            p.vmove(t, [s / 4] * 3)
+            p.vmove(t, [-s / 4] * 3)
+            p.vmove(t, [s / 10] * 3)
+            p.vmove(t, [-s / 10] * 3)
+
+        moves = [[-500 * i] * 3 for i in range(0, 15, 2)]
+        moves = moves + moves[::-1]
+        # for m in moves:
+
+        for i in range(4):
+            p.vmove(.5, [0, 0, 600])
+            p.vmove(.5, [0, 0, -600])
+            sleep(.4)
+            # p.update(cb)
 
         p.runempty(cb);
         p.info()
+
 
 if __name__ == '__main__':
     unittest.main()

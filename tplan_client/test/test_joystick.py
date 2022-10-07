@@ -20,11 +20,11 @@ def cb(p, m):
 
 # Different maps for each max speed
 freq_map = [
-    mkmap(0, 1, 0, 600),
-    mkmap(0, 1, 0, 3000),
-    mkmap(0, 1, 0, 8000),
-    mkmap(0, 1, 0, 11000),
-    mkmap(0, 1, 0, 15000)
+    mkmap(0, 1, 0, 5000),
+    mkmap(0, 1, 0, 15000),
+    #mkmap(0, 1, 0, 8000),
+    #mkmap(0, 1, 0, 11000),
+    #mkmap(0, 1, 0, 15000)
 ]
 
 class TestJoystick(unittest.TestCase):
@@ -37,26 +37,26 @@ class TestJoystick(unittest.TestCase):
                 print(m)
 
         def get_js_move():
-            for e in PygameJoystick(t=.3):
+            for e in PygameJoystick(t=.15):
                 button = max([0] + e.button)
-                m = freq_map[button]
-                yield [int(m(a)) for a in e.axes]
-
+                m = freq_map[ int(3 in e.trigger)]
+                yield e, [int(m(a)) for a in e.axes]
 
         logging.basicConfig(level=logging.DEBUG)
 
         p = SyncProto(packet_port, None)
 
         d = make_axes(500, .1, usteps=10, steps_per_rotation=200)
-        p.config(4, 18, 32, False, False, axes=d['axes3']);
+        p.config(4, 18, 32, False, False, axes=d['left'])
 
         p.reset()
         p.run()
 
         last = time()
-        for move in get_js_move():
+        for e, move in get_js_move():
             p.jog(.2, move[:3])
-            print(round(last - time(), 3), move[:3])
+            print( round(time()-last, 3), move[:3])
+
             last = time()
 
         p.info()
