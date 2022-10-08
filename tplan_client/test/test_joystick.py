@@ -47,15 +47,15 @@ class TestJoystick(unittest.TestCase):
         p = SyncProto(packet_port, None)
 
         d = make_axes(500, .1, usteps=10, steps_per_rotation=200)
-        p.config(4, 18, 32, False, False, axes=d['left'])
+        p.config(4, 18, 32, False, False, axes=d['axes6'])
 
         p.reset()
         p.run()
 
         last = time()
         for e, move in get_js_move():
-            p.jog(.2, move[:3])
-            print( round(time()-last, 3), move[:3])
+            p.jog(.2, move)
+            print( round(time()-last, 3), move)
 
             last = time()
 

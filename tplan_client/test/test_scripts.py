@@ -153,7 +153,7 @@ class TestSerial(unittest.TestCase):
 
         p.info()
         p.run()
-        s = d['x_1sec'] / 2
+        s = d['x_1sec'] * 2
 
         for i in range(4):
             p.rmove((s, s, s))
@@ -193,8 +193,8 @@ class TestSerial(unittest.TestCase):
         # for m in moves:
 
         for i in range(4):
-            p.vmove(.5, [0, 0, 600])
-            p.vmove(.5, [0, 0, -600])
+            p.vmove(.5, [0, 0, 10000])
+            p.vmove(.5, [0, 0, -10000])
             sleep(.4)
             # p.update(cb)
 
