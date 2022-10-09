@@ -33,6 +33,7 @@ class TestSerial(unittest.TestCase):
 
     def init(self, v=800, axes_name='axes1', usteps=16, a=.1,
              highvalue=OutVal.HIGH, outmode=OutMode.OUTPUT,
+             debug_print=False, debug_tick=False,
              segment_pin=27, limit_pint=29, period=4,
              use_encoder=True):
 
@@ -42,7 +43,7 @@ class TestSerial(unittest.TestCase):
         p = SyncProto(packet_port, encoder_port if use_encoder else None)
         p.encoder_multipliers[0] = 1 + (1 / 3)
 
-        p.config(period, segment_pin, limit_pint, False, False, axes=d[axes_name]);
+        p.config(period, segment_pin, limit_pint, debug_print, debug_tick, axes=d[axes_name]);
 
         p.mspr = d['mspr']
         p.x_1sec = d['x_1sec']
@@ -106,11 +107,13 @@ class TestSerial(unittest.TestCase):
     def test_config(self):
         """Test changing the configuration"""
 
-        p = self.config('right')
+        p = self.init(1000, usteps=10, axes_name='axes6',
+                      debug_print=True,
+                      outmode=OutMode.OUTPUT_OPENDRAIN);
 
         p.info()
 
-        p.update()
+        #p.update()
 
     def test_runout(self):
         """Test changing the configuration"""
@@ -147,20 +150,23 @@ class TestSerial(unittest.TestCase):
 
         logging.basicConfig(level=logging.DEBUG)
 
-        p = self.init(1000, usteps=10, axes_name='axes6', outmode=OutMode.OUTPUT_OPENDRAIN);
+        p = self.init(700, a=1, usteps=10, axes_name='axes6',
+                      debug_print=False,
+                      outmode=OutMode.OUTPUT_OPENDRAIN);
 
         p.reset
         p.info()
-        p.run()
+        p.stop()
 
         s = p.x_1sec
 
         n = len(p.axes)
 
-        for i in range(5):
+        for i in range(3):
             p.rmove([s]*n)
             p.rmove([-s]*n)
 
+        p.run()
         p.runempty(cb)
 
     def test_simple_jog(self):
