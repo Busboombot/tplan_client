@@ -35,6 +35,7 @@ class TestSerial(unittest.TestCase):
              highvalue=OutVal.HIGH, outmode=OutMode.OUTPUT,
              segment_pin=27, limit_pint=29, period=4,
              use_encoder=True):
+
         d = make_axes(v, a, usteps=usteps, steps_per_rotation=200,
                       highval=highvalue, output_mode=outmode)
 
@@ -129,7 +130,7 @@ class TestSerial(unittest.TestCase):
         d = make_axes(1000, 1, usteps=10, steps_per_rotation=200)
 
         p = SyncProto(packet_port, None, baudrate)
-        p.config(4, self.ENABLE_OUTPUT, False, False, axes=d['right']);
+        p.init( axes=d['right']);
 
         p.stop()
         s = d['x_1sec'] / 2
@@ -146,18 +147,19 @@ class TestSerial(unittest.TestCase):
 
         logging.basicConfig(level=logging.DEBUG)
 
-        d = make_axes(1000, 1, usteps=10, steps_per_rotation=200)
+        p = self.init(1000, usteps=10, axes_name='axes6', outmode=OutMode.OUTPUT_OPENDRAIN);
 
-        p = SyncProto(packet_port, None, baudrate)
-        p.config(4, self.ENABLE_OUTPUT, False, False, axes=d['left']);
-
+        p.reset
         p.info()
         p.run()
-        s = d['x_1sec'] * 2
 
-        for i in range(4):
-            p.rmove((s, s, s))
-            p.rmove((-s, -s, -s))
+        s = p.x_1sec
+
+        n = len(p.axes)
+
+        for i in range(5):
+            p.rmove([s]*n)
+            p.rmove([-s]*n)
 
         p.runempty(cb)
 
@@ -167,9 +169,7 @@ class TestSerial(unittest.TestCase):
 
         logging.basicConfig(level=logging.DEBUG)
 
-        p = SyncProto(packet_port, None, baudrate)
-        d = make_axes(1000, 1, usteps=10, steps_per_rotation=200)
-        p.config(4, self.ENABLE_OUTPUT, False, False, axes=d['left']);
+        p = self.init(1000, usteps=10, axes_name='axes6', outmode=OutMode.OUTPUT_OPENDRAIN);
 
         p.info()
         p.run()
