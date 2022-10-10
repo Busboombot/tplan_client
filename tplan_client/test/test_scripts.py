@@ -43,7 +43,8 @@ class TestSerial(unittest.TestCase):
         p = SyncProto(packet_port, encoder_port if use_encoder else None)
         p.encoder_multipliers[0] = 1 + (1 / 3)
 
-        p.config(period, segment_pin, limit_pint, debug_print, debug_tick, axes=d[axes_name]);
+        p.config(period, segment_pin, limit_pint, debug_print,
+                 debug_tick, axes=d[axes_name]);
 
         p.mspr = d['mspr']
         p.x_1sec = d['x_1sec']
@@ -150,11 +151,11 @@ class TestSerial(unittest.TestCase):
 
         logging.basicConfig(level=logging.DEBUG)
 
-        p = self.init(700, a=1, usteps=10, axes_name='axes6',
-                      debug_print=True,
+        p = self.init(2000, a=1, usteps=10, axes_name='axes6',
+                      debug_print=False,
                       outmode=OutMode.OUTPUT_OPENDRAIN);
 
-        p.reset
+        p.reset()
 
         p.info()
         p.stop()
@@ -162,16 +163,16 @@ class TestSerial(unittest.TestCase):
         s = p.x_1sec * 4
         #s = 8000
         n = len(p.axes)
-        m1 = [s * 0, s * 1, s * 0, s * 0, s * 0, s * 0]  # [s]*n
+        m1 = [s * 1, s * 1, s * 1, s * 1, s * 1, s * 1]  # [s]*n
         m2 = [-e for e in m1]
 
         for i in range(1):
             p.rmove(m1)
-            # p.rmove(m2)
-        p.runempty(cb)
+            p.rmove(m2)
 
         p.run()
         p.runempty(cb)
+
 
     def test_simple_jog(self):
         """A simple move with 1 axis"""
