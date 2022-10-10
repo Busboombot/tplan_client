@@ -113,7 +113,7 @@ class TestSerial(unittest.TestCase):
 
         p.info()
 
-        #p.update()
+        # p.update()
 
     def test_runout(self):
         """Test changing the configuration"""
@@ -133,7 +133,7 @@ class TestSerial(unittest.TestCase):
         d = make_axes(1000, 1, usteps=10, steps_per_rotation=200)
 
         p = SyncProto(packet_port, None, baudrate)
-        p.init( axes=d['right']);
+        p.init(axes=d['right']);
 
         p.stop()
         s = d['x_1sec'] / 2
@@ -151,20 +151,24 @@ class TestSerial(unittest.TestCase):
         logging.basicConfig(level=logging.DEBUG)
 
         p = self.init(700, a=1, usteps=10, axes_name='axes6',
-                      debug_print=False,
+                      debug_print=True,
                       outmode=OutMode.OUTPUT_OPENDRAIN);
 
         p.reset
+
         p.info()
         p.stop()
 
-        s = p.x_1sec
-
+        s = p.x_1sec * 4
+        #s = 8000
         n = len(p.axes)
+        m1 = [s * 0, s * 1, s * 0, s * 0, s * 0, s * 0]  # [s]*n
+        m2 = [-e for e in m1]
 
-        for i in range(3):
-            p.rmove([s]*n)
-            p.rmove([-s]*n)
+        for i in range(1):
+            p.rmove(m1)
+            # p.rmove(m2)
+        p.runempty(cb)
 
         p.run()
         p.runempty(cb)
