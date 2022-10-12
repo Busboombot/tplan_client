@@ -6,6 +6,8 @@ from tplan_client.joystick import *
 from tplan_client.proto import SyncProto
 from tplan_client.test import make_axes
 
+import numpy as np
+
 logging.basicConfig(level=logging.DEBUG)
 from tplan_client.messages import OutMode
 
@@ -16,112 +18,113 @@ baudrate = 115200  # 20_000_000
 
 def cb(p, m):
     if m.code != CommandCode.ALIVE:
-        print(m, "E=", p.empty, "R=", p.running, m.payload)
+        print(m,  m.payload)
+
 
 # Different maps for each max speed
 freq_map = [
     mkmap(0, 1, 0, 5000),
-    mkmap(0, 1, 0, 15000),
-    #mkmap(0, 1, 0, 8000),
-    #mkmap(0, 1, 0, 11000),
-    #mkmap(0, 1, 0, 15000)
+    mkmap(0, 1, 0, 10000),
+    # mkmap(0, 1, 0, 8000),
+    # mkmap(0, 1, 0, 11000),
+    # mkmap(0, 1, 0, 15000)
 ]
 
+
 class TestJoystick(unittest.TestCase):
+    def init(self, v=800, axes_name='axes1', usteps=16, a=.1,
+             highvalue=OutVal.HIGH, outmode=OutMode.OUTPUT,
+             debug_print=False, debug_tick=False,
+             segment_pin=27, limit_pint=29, period=4,
+             use_encoder=True):
+
+        d = make_axes(v, a, usteps=usteps, steps_per_rotation=200,
+                      highval=highvalue, output_mode=outmode)
+
+        p = SyncProto(packet_port, encoder_port if use_encoder else None)
+        p.encoder_multipliers[0] = 1 + (1 / 3)
+
+        p.config(period, segment_pin, limit_pint, debug_print,
+                 debug_tick, axes=d[axes_name]);
+
+        p.mspr = d['mspr']
+        p.x_1sec = d['x_1sec']
+
+        return p
+
+    def config(self, key):
+        p = SyncProto(packet_port, None)
+        d = make_axes(500, .1, usteps=10, steps_per_rotation=200)
+        p.config(4, 18, 32, False, False, axes=d[key])
+
+        return p;
 
     def test_joystick(self):
         from time import time
 
-        def cb(p, m):
-            if m.name != 'MESSAGE':
-                print(m)
-
         def get_js_move():
-            for e in PygameJoystick(t=.15):
+            for e in PygameJoystick(t=.1):
                 button = max([0] + e.button)
-                m = freq_map[ int(3 in e.trigger)]
+                m = freq_map[int(3 in e.trigger)]
                 yield e, [int(m(a)) for a in e.axes]
 
         logging.basicConfig(level=logging.DEBUG)
 
-        p = SyncProto(packet_port, None)
-
-        d = make_axes(500, .1, usteps=10, steps_per_rotation=200)
-        p.config(4, 18, 32, False, False, axes=d['axes6'])
+        p = self.init(2000, a=1, usteps=10, axes_name='axes6',
+                      debug_print=False,
+                      outmode=OutMode.OUTPUT_OPENDRAIN);
 
         p.reset()
         p.run()
 
         last = time()
         for e, move in get_js_move():
-            p.jog(.2, move)
-            print( round(time()-last, 3), move)
 
+            # Only allow one move at a time, which ever is the largest. 
+            max_idx = np.argmax(np.abs(move))
+            move = [ e if i==max_idx else 0 for i, e in enumerate(move)]
+
+            p.jog(.2, move)
+
+            print(round(time() - last, 3), move, p.current_state.queue_length)
             last = time()
+            p.update(timeout=0)
+
 
         p.info()
         p.stop()
 
-    def test_random_jog(self):
 
-        from random import random
+    def test_fake_joystick(self):
+        from time import time
 
-        def cb(p, m):
-            print(m)
+        def get_js_move():
+            for e in PygameJoystick(t=.1):
+                button = max([0] + e.button)
+                m = freq_map[int(3 in e.trigger)]
+                yield e, [int(m(a)) for a in e.axes]
 
-        p = SyncProto(packet_port, baudrate)
+        logging.basicConfig(level=logging.DEBUG)
 
-        d = make_axes(250, .2, usteps=32, steps_per_rotation=48)
-        jog_interval = .5  # Secs between jog messages
-        s = d['x_1sec'] * jog_interval  # Max steps between jog intervals, but for a bit longer than the
+        p = self.init(2000, a=1, usteps=10, axes_name='axes6',
+                      debug_print=False,
+                      outmode=OutMode.OUTPUT_OPENDRAIN);
 
-        p.config(4, True, False, False, axes=d['axes6']);
+        p.reset()
         p.run()
 
-        for i in range(10_000_000):
-            moves = [2 * (random() - .5) * s for i in range(6)]
-            print(jog_interval * 1.5, moves)
-            p.jog(jog_interval * 1.5, moves)
-            sleep(jog_interval)
+        move = [10_000, 100, 0, 0, 0, 0 ]
 
-        p.read_empty(cb);
+        for i in range(100):
+            p.jog(.25, move)
+            p.update(timeout=0)
+            sleep(.1)
+
 
         p.info()
         p.stop()
 
-    def test_joy_move(self):
 
-        def get_joy():
-            while True:
-                with open('/tmp/joystick') as f:
-                    return [float(e) for e in f.readline().split(',')]
-
-        last_time = time()
-        last_velocities = [0] * 6
-        seq = 0
-
-        while True:
-
-            e = get_joy()
-
-            dt = time() - last_time
-
-            if dt >= .20 and len(proto) <= 2:
-                last_time = time()
-
-                velocities = e + [0, 0]
-
-                x = [.5 * (v0 + v1) * dt for v0, v1 in zip(last_velocities, velocities)]
-
-                msg = Command(seq, 10, dt * 1e6, last_velocities, velocities, x)
-
-                # proto.write(msg)
-
-                seq += 1
-
-                last_velocities = velocities
-            elif dt < .20:
-                sleep(.20 - dt)
 
 
 if __name__ == '__main__':

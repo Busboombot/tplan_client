@@ -151,7 +151,7 @@ class TestSerial(unittest.TestCase):
 
         logging.basicConfig(level=logging.DEBUG)
 
-        p = self.init(2000, a=1, usteps=10, axes_name='axes6',
+        p = self.init(1000, a=1, usteps=10, axes_name='axes6',
                       debug_print=False,
                       outmode=OutMode.OUTPUT_OPENDRAIN);
 
@@ -160,7 +160,7 @@ class TestSerial(unittest.TestCase):
         p.info()
         p.stop()
 
-        s = p.x_1sec * 4
+        s = p.x_1sec * 1
         #s = 8000
         n = len(p.axes)
         m1 = [s * 1, s * 1, s * 1, s * 1, s * 1, s * 1]  # [s]*n
@@ -173,44 +173,33 @@ class TestSerial(unittest.TestCase):
         p.run()
         p.runempty(cb)
 
-
     def test_simple_jog(self):
         """A simple move with 1 axis"""
         from time import sleep
 
         logging.basicConfig(level=logging.DEBUG)
 
-        p = self.init(1000, usteps=10, axes_name='axes6', outmode=OutMode.OUTPUT_OPENDRAIN);
+        p = self.init(2000, a=1, usteps=10, axes_name='axes6',
+                      debug_print=False,
+                      outmode=OutMode.OUTPUT_OPENDRAIN);
+
+        p.reset()
 
         p.info()
         p.run()
-        s = 20_000
-        t = .2
 
-        p.run()
+        s = 10000
+        n = len(p.axes)
+        m1 = [s * 1]*n
 
-        def stepped_v():
-            p.vmove(t, [s] * 3)
-            p.vmove(t, [-s] * 3)
-            p.vmove(t, [s / 2] * 3)
-            p.vmove(t, [-s / 2] * 3)
-            p.vmove(t, [s / 4] * 3)
-            p.vmove(t, [-s / 4] * 3)
-            p.vmove(t, [s / 10] * 3)
-            p.vmove(t, [-s / 10] * 3)
+        for i in range(100):
+            p.jog(.2, m1)
+            p.jog(.2, m1)
+            p.jog(.2, m1)
+            sleep(.2)
+            p.update(cb, timeout=0)
 
-        moves = [[-500 * i] * 3 for i in range(0, 15, 2)]
-        moves = moves + moves[::-1]
-        # for m in moves:
-
-        for i in range(4):
-            p.vmove(.5, [0, 0, 10000])
-            p.vmove(.5, [0, 0, -10000])
-            sleep(.4)
-            # p.update(cb)
-
-        p.runempty(cb);
-        p.info()
+        p.runempty(cb)
 
 
 if __name__ == '__main__':
