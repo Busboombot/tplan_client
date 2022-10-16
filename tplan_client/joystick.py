@@ -3,8 +3,7 @@ from __future__ import division
 
 from collections import namedtuple
 from math import copysign
-from time import time
-
+from time import time, sleep
 
 def mkmap(r1, r2, d1, d2):
     """Map from one interval range to another"""
@@ -28,10 +27,7 @@ def mkmap(r1, r2, d1, d2):
 
     return range
 
-
-
-JoyValues = namedtuple('JoyValues', 'seq now delta button axis_mode axes'.split())
-
+JoyValues = namedtuple('JoyValues', 'seq now delta button trigger axes'.split())
 
 class PygameJoystick(object):
 
@@ -41,7 +37,6 @@ class PygameJoystick(object):
         param t: minimum frequency, in seconds,  at which to yield a result, even if there are no changes.
         Defaults to 1 
         """
-
         import pygame
 
         pygame.init()
@@ -63,7 +58,7 @@ class PygameJoystick(object):
         else:
             self.interval = 500
 
-        self.last = JoyValues(0, 0, 0, [], 0, [0] * 6)
+        self.last = JoyValues(0, 0, 0, [], [], [0] * 6)
 
     def __iter__(self):
         import pygame
@@ -72,14 +67,19 @@ class PygameJoystick(object):
 
         joy_events = (JOYAXISMOTION, JOYBALLMOTION, JOYBUTTONDOWN, JOYBUTTONUP, JOYHATMOTION)
 
-        seq = 0;
-        lasttime = time()
+        seq = 0
+
+        LOWER_LIMIT = 0.03
+        mp = mkmap(LOWER_LIMIT, 1, 0, 1)
 
         def p(axis):
             v = j.get_axis(axis)
-            v = v if abs(v) > .03 else 0
+            v = v if abs(v) > LOWER_LIMIT else LOWER_LIMIT
+            v = mp(v)
             return copysign(abs(v), v)
 
+        interval_s = self.interval / 1e3
+        lasttime = time()
         while True:
 
             event = pygame.event.wait(self.interval)
@@ -92,14 +92,13 @@ class PygameJoystick(object):
                 pygame.quit()
                 return
 
-
             if event and event.type in joy_events:
                 i = event.joy
                 j = self.joysticks[i]
 
                 button = [z + 1 for z in range(j.get_numbuttons()) if j.get_button(z) and z in range(4)]
 
-                axis_mode = [z for z in range(j.get_numbuttons()) if j.get_button(z) and z in range(4, 8)]
+                trigger = [z-4 for z in range(j.get_numbuttons()) if j.get_button(z) and z in range(4, 8)]
 
                 hats = [j.get_hat(i) for i in range(j.get_numhats())]
 
@@ -108,19 +107,21 @@ class PygameJoystick(object):
 
             else:
                 button = self.last.button
-                axis_mode = self.last.axis_mode
+                trigger = self.last.trigger
                 axes = self.last.axes
 
             now = time()
             delta = now - lasttime
 
-            if delta > self.interval/1e6:
+            if now-lasttime < interval_s:
+                sleep(interval_s - (now-lasttime))
 
-                self.last = JoyValues(seq, now, delta, button, axis_mode, axes)
-                lasttime = now
-                seq += 1
+            lasttime = now
 
-                yield self.last
+            self.last = JoyValues(seq, now, delta, button, trigger, axes)
+            seq += 1
+
+            yield self.last
 
     def __del__(self):
         import pygame
