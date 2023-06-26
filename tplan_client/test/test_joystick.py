@@ -73,6 +73,7 @@ class TestJoystick(unittest.TestCase):
         for device in hid.enumerate():
             print(f"0x{device['vendor_id']:04x}:0x{device['product_id']:04x} {device['product_string']}")
 
+
     def test_joystick(self):
         from time import time
 
