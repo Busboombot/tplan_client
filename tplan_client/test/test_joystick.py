@@ -59,6 +59,20 @@ class TestJoystick(unittest.TestCase):
 
         return p;
 
+    def test_find_joysticks(self):
+        import pygame
+
+        pygame.init()
+        pygame.joystick.init()
+        joysticks = [pygame.joystick.Joystick(x) for x in range(pygame.joystick.get_count())]
+
+        print(joysticks)
+
+        import hid
+
+        for device in hid.enumerate():
+            print(f"0x{device['vendor_id']:04x}:0x{device['product_id']:04x} {device['product_string']}")
+
     def test_joystick(self):
         from time import time
 
@@ -80,9 +94,9 @@ class TestJoystick(unittest.TestCase):
         last = time()
         for e, move in get_js_move():
 
-            # Only allow one move at a time, which ever is the largest. 
+            # Only allow one move at a time, which ever is the largest.
             max_idx = np.argmax(np.abs(move))
-            move = [ e if i==max_idx else 0 for i, e in enumerate(move)]
+            #move = [ e if i==max_idx else 0 for i, e in enumerate(move)]
 
             p.jog(.2, move)
 

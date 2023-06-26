@@ -47,6 +47,9 @@ class PygameJoystick(object):
         for j in self.joysticks:
             j.init()
 
+        if len(self.joysticks) == 0:
+            raise Exception("Didn't find any joysticks")
+
         for i, j in enumerate(self.joysticks):
             pass
             # print j.get_init(), j.get_name()
