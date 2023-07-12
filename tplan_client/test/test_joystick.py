@@ -64,6 +64,7 @@ class TestJoystick(unittest.TestCase):
 
         pygame.init()
         pygame.joystick.init()
+
         joysticks = [pygame.joystick.Joystick(x) for x in range(pygame.joystick.get_count())]
 
         print(joysticks)
@@ -73,11 +74,31 @@ class TestJoystick(unittest.TestCase):
         for device in hid.enumerate():
             print(f"0x{device['vendor_id']:04x}:0x{device['product_id']:04x} {device['product_string']}")
 
+    def test_enumerate(self ):
+
+        j = HidJoystick()
+
+        last = None
+        for e in j:
+            if e != last:
+                print(e)
+                last = e
+
+
+    def test_sdl_joystick(self):
+        import pygame
+        pygame.init()
+
+        for e in SdlJoystick():
+            print("H")
+            print(e)
+
 
     def test_joystick(self):
         from time import time
 
         def get_js_move():
+
             for e in PygameJoystick(t=.1):
                 button = max([0] + e.button)
                 m = freq_map[int(3 in e.trigger)]
