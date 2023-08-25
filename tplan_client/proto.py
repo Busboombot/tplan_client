@@ -405,7 +405,7 @@ class SyncProto(object):
         self._move(CommandCode.HMOVE, x, t=0)
 
     def vmove(self, t: float, x: Union[List[Any], Tuple[Any], Dict]):
-        "A homing move, which will stop when it gets to a limit. "
+        "A velocity move "
         self._move(CommandCode.VMOVE, x, t=t)
 
     def jog(self, t: float, x: Union[List[Any], Tuple[Any], Dict]):

@@ -21,19 +21,11 @@ def cb(p, m):
         print(m,  m.payload)
 
 
-# Different maps for each max speed
-freq_map = [
-    mkmap(0, 1, 0, 5000),
-    mkmap(0, 1, 0, 10000),
-    # mkmap(0, 1, 0, 8000),
-    # mkmap(0, 1, 0, 11000),
-    # mkmap(0, 1, 0, 15000)
-]
 
+class TestSteppers(unittest.TestCase):
 
-class TestJoystick(unittest.TestCase):
     def init(self, v=800, axes_name='axes1', usteps=16, a=.1,
-             highvalue=OutVal.HIGH, outmode=OutMode.OUTPUT,
+             highvalue=OutVal.HIGH, outmode=OutMode.OUTPUT_OPENDRAIN,
              debug_print=False, debug_tick=False,
              segment_pin=27, limit_pint=29, period=4,
              use_encoder=True):
@@ -69,36 +61,41 @@ class TestJoystick(unittest.TestCase):
                 print(e.moves)
                 last = e
 
+    def test_rmove6(self):
 
-    def test_joystick(self):
-        from time import time
-
-        j = HidJoystick()
 
         logging.basicConfig(level=logging.DEBUG)
 
-        p = self.init(2000, a=1, usteps=10, axes_name='axes6',
+        p = self.init(800, a=4, usteps=10, axes_name='axes6',
                       debug_print=False,
                       outmode=OutMode.OUTPUT_OPENDRAIN);
 
         p.reset()
         p.run()
 
-        last = time()
-        for e in j:
+        def mmult(m, f):
+            return [ e*f for e in m]
 
-            move = e.moves
+        dist = 10_000 #  253_000*2
+        m = [dist]*6
+        mn = mmult(m, -2)
 
-            p.jog(.2, move)
+        try:
+            for i in range(4):
+                p.rmove(m)
+                p.rmove(mn)
+                p.rmove(m)
+                p.runempty(cb, 10)
 
-            print(round(time() - last, 3), move, p.current_state.queue_length)
-            last = time()
-            p.update(timeout=0)
+            p.runempty(cb, 20)
+            p.info()
+        except:
+            p.stop()
+            p.reset()
+            raise
 
 
-
-        p.info()
-        p.stop()
+        #p.stop()
 
     def test_fake_joystick(self):
         from time import time
