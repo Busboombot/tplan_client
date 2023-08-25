@@ -4,3 +4,6 @@ ansicolors
 numpy
 pandas
 cobs
+pygame
+
+setuptools~=67.7.2

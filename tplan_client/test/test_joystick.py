@@ -66,13 +66,15 @@ class TestJoystick(unittest.TestCase):
         pygame.joystick.init()
         joysticks = [pygame.joystick.Joystick(x) for x in range(pygame.joystick.get_count())]
 
-        print(joysticks)
+        print(pygame.joystick.get_count(), joysticks)
 
-        import hid
+        try:
+            import hid
 
-        for device in hid.enumerate():
-            print(f"0x{device['vendor_id']:04x}:0x{device['product_id']:04x} {device['product_string']}")
-
+            for device in hid.enumerate():
+                print(f"0x{device['vendor_id']:04x}:0x{device['product_id']:04x} {device['product_string']}")
+        except ImportError:
+            pass
 
     def test_joystick(self):
         from time import time
