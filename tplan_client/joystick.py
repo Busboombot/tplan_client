@@ -5,6 +5,7 @@ from collections import namedtuple
 from math import copysign
 from time import time, sleep
 
+
 def mkmap(r1, r2, d1, d2):
     """Map from one interval range to another"""
     r = r2 - r1
@@ -12,7 +13,7 @@ def mkmap(r1, r2, d1, d2):
 
     def range(x):
 
-        sign = x/abs(x) if x!= 0 else 0
+        sign = x / abs(x) if x != 0 else 0
         x = abs(x)
 
         if x < r1:
@@ -23,22 +24,37 @@ def mkmap(r1, r2, d1, d2):
         s = float(x - r1) / float(r)
         v = d1 + (s * d)
 
-        return sign*v
+        return sign * v
 
     return range
 
+
 JoyValues = namedtuple('JoyValues', 'seq now delta button trigger axes'.split())
 
-class PygameJoystick(object):
+
+class RobotJoystick():
 
     def __init__(self, t=None):
-        """Read the pygame joystick and yield frequency values for the stepper motors. 
-        
-        param t: minimum frequency, in seconds,  at which to yield a result, even if there are no changes.
-        Defaults to 1 
-        """
-        import pygame
+        """Read the pygame joystick and yield frequency values for the stepper motors.
 
+        param t: minimum frequency, in seconds,  at which to yield a result, even if there are no changes.
+        Defaults to 1
+        """
+
+        self.init()
+
+        if t:
+            self.interval = int(t * 1000)
+        else:
+            self.interval = 500
+
+        self.last = JoyValues(0, 0, 0, [], [], [0] * 6)
+
+
+class PygameJoystick(RobotJoystick):
+
+    def init(self):
+        import pygame
         pygame.init()
         pygame.joystick.init()
 
@@ -56,12 +72,9 @@ class PygameJoystick(object):
             # print [j.get_axis(k) for k in range(j.get_numaxes())]
             # print [j.get_button(z) for z in range(j.get_numbuttons())]
 
-        if t:
-            self.interval = int(t * 1000)
-        else:
-            self.interval = 500
-
-        self.last = JoyValues(0, 0, 0, [], [], [0] * 6)
+    def __del__(self):
+        import pygame
+        pygame.display.quit()
 
     def __iter__(self):
         import pygame
@@ -101,12 +114,16 @@ class PygameJoystick(object):
 
                 button = [z + 1 for z in range(j.get_numbuttons()) if j.get_button(z) and z in range(4)]
 
-                trigger = [z-4 for z in range(j.get_numbuttons()) if j.get_button(z) and z in range(4, 8)]
+                trigger = [z - 4 for z in range(j.get_numbuttons()) if j.get_button(z) and z in range(4, 8)]
 
-                hats = [j.get_hat(i) for i in range(j.get_numhats())]
+                if j.get_numhats():
+                    hats = [j.get_hat(i) for i in range(j.get_numhats())]
 
-                axes = [p(axis) for axis in range(j.get_numaxes())] + \
-                       [copysign(abs(h), h) for h in hats[0]]
+                    axes = [p(axis) for axis in range(j.get_numaxes())] + \
+                           [copysign(abs(h), h) for h in hats[0]]
+
+                else:
+                    axes = [p(axis) for axis in range(j.get_numaxes())]
 
             else:
                 button = self.last.button
@@ -116,8 +133,8 @@ class PygameJoystick(object):
             now = time()
             delta = now - lasttime
 
-            if now-lasttime < interval_s:
-                sleep(interval_s - (now-lasttime))
+            if now - lasttime < interval_s:
+                sleep(interval_s - (now - lasttime))
 
             lasttime = now
 
@@ -126,6 +143,113 @@ class PygameJoystick(object):
 
             yield self.last
 
-    def __del__(self):
-        import pygame
-        pygame.display.quit()
+from dataclasses import dataclass, field
+from typing import List
+
+@dataclass
+class HidJoyValues:
+    l_x: float = 0
+    l_y: float = 0
+    r_x: float = 0
+    r_y: float = 0
+
+    hat: str = None
+
+    buttons: List[str] = field(default_factory=list)
+
+
+    def __key(self):
+        return (self.l_x, self.l_y, self.r_x, self.r_y, self.hat, *self.buttons)
+
+    def __hash__(self):
+        return hash(self.__key())
+
+    def __eq__(self, other):
+        if isinstance(other, HidJoyValues):
+            return self.__key() == other.__key()
+        return NotImplemented
+
+
+class HidJoystick:
+    """A Joystick class that uses the first Logitech joystick, via the Hid library. """
+
+    hat_dirs = ['N','NE','E','SE','S','SW','W','NW',None]
+
+    button_names = ['y', 'b', 'a', 'x', 'stick_r', 'stick_l', 'start', 'back', 'rt', 'lt', 'rb', 'lb']
+
+    def __init__(self):
+        import hid
+
+        self.vid, self.pid = self.find_first_joystick()
+
+        self.device = hid.device(self.vid, self.pid)
+        self.device.open(self.vid, self.pid)
+
+        self.last = None
+        self.last_state_i = None
+
+        # Left and right joystick, x and y axes
+        self.lj_x, self.lj_y, self.rj_x, self.rj_y = [None] * 4
+
+        # Buttons a, b , x, y
+        self.b_y, self.b_b, self.b_a, self.b_x = [None] * 4
+        self.stick_r, self.stick_l = None, None # Stick buttons
+        self.start, self.back = None, None
+        self.rt, self.lt = None, None # Triggers
+        self.rb, self.lb = None, None # Left and right buttons
+        self.hat, self.hat_dir = None, None
+
+    @classmethod
+    def find_first_joystick(cls, name='Logitech Dual Action'):
+        """Find the first Logitec Dual device"""
+        import hid
+
+        vid, pid = None, None
+
+        for device in hid.enumerate():
+
+            print(f"0x{device['vendor_id']:04x}:0x{device['product_id']:04x} {device['product_string']}")
+
+            if name in device['product_string']:
+                vid = device['vendor_id']
+                pid = device['product_id']
+
+        return vid, pid
+
+    def __iter__(self):
+        while True:
+            jv = self.next()
+            if jv:
+                yield jv
+
+    def next(self):
+
+        jv = HidJoyValues()
+
+        z = self.device.read(max_length=8, timeout_ms=50)
+
+        if not z:
+            return None
+
+        jv.r_x, jv.r_y, jv.l_x, jv.l_y, *buttons = z
+
+        state_l = []
+        for i, g in enumerate(buttons[:3]):
+            for j, b in enumerate(f"{g:08b}"):
+                state_l.append(b)
+
+        y, b, a, x, *state_l = state_l
+
+        hat, state_l = state_l[:4], state_l[4:] # hat is 4 bits
+
+        hat = int(''.join([str(e) for e in hat]), 2)
+
+        jv.hat = self.hat_dirs[hat]
+
+        stick_r, stick_l, start, back, rt, lt, rb, lb, *state_l = state_l
+
+        jv.buttons = [ name for name, val in zip(self.button_names,
+                                              (y, b, a, x, stick_r, stick_l, start, back, rt, lt, rb, lb))
+                    if int(val)]
+
+        return jv
