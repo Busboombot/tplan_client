@@ -319,6 +319,30 @@ class TestSerial(unittest.TestCase):
 
         p.info()
 
+    def test_r_move_a6(self):
+
+        def cb(p, m):
+            print(m)
+
+        logging.basicConfig(level=logging.DEBUG)
+
+        p = SyncProto(packet_port, baudrate)
+
+        d = make_axes(300, .1, usteps=32, steps_per_rotation=48)
+        s = d['x_1sec']
+
+        p.config(4, True, False, False, axes=d['axes3']);
+
+        p.rmove((1 * s, .5 * s, 1 * s))
+        p.rmove((-1 * s, .25 * s, -1 * s))
+        p.rmove((1 * s, 1 * s, 1 * s))
+        p.rmove((-1 * s, .5 * s, -1 * s))
+        p.run()
+        p.read_empty(cb);
+
+        p.info()
+
+
     def test_simple_r_move_x(self):
 
         def cb(p, m):

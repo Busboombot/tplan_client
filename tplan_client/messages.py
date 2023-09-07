@@ -224,8 +224,9 @@ class MoveCommand(object):
         try:
 
             return struct.pack(self.msg_fmt, self.t, *self.x)
-        except:
-            print(self.__dict__)
+        except Exception as e:
+            print(e, self.__dict__)
+            print(self.t, self.x )
             raise
 
     def __repr__(self):

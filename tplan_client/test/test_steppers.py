@@ -21,19 +21,11 @@ def cb(p, m):
         print(m,  m.payload)
 
 
-# Different maps for each max speed
-freq_map = [
-    mkmap(0, 1, 0, 5000),
-    mkmap(0, 1, 0, 10000),
-    # mkmap(0, 1, 0, 8000),
-    # mkmap(0, 1, 0, 11000),
-    # mkmap(0, 1, 0, 15000)
-]
 
+class TestSteppers(unittest.TestCase):
 
-class TestJoystick(unittest.TestCase):
-    def init(self, v=800, axes_name='axes1', usteps=16, a=.1,
-             highvalue=OutVal.HIGH, outmode=OutMode.OUTPUT,
+    def init(self, v=700, axes_name='axes1', usteps=16, a=.1,
+             highvalue=OutVal.HIGH, outmode=OutMode.OUTPUT_OPENDRAIN,
              debug_print=False, debug_tick=False,
              segment_pin=27, limit_pint=29, period=4,
              use_encoder=True):
@@ -59,15 +51,7 @@ class TestJoystick(unittest.TestCase):
 
         return p;
 
-    def test_enumerate(self ):
-        import hid
-
-        for device in hid.enumerate():
-            print(f"0x{device['vendor_id']:04x}:0x{device['product_id']:04x} {device['product_string']}")
-
     def test_hidjoystick(self ):
-
-        print(HidJoystick.find_first_joystick())
 
         j = HidJoystick()
 
@@ -77,10 +61,50 @@ class TestJoystick(unittest.TestCase):
                 print(e.moves)
                 last = e
 
-    def test_joystick(self):
+    def test_rmove6(self):
+
+
+        logging.basicConfig(level=logging.DEBUG)
+
+        p = self.init(700, a=4, usteps=10, axes_name='axes6',
+                      debug_print=False,
+                      outmode=OutMode.OUTPUT_OPENDRAIN);
+
+        p.reset()
+        p.run()
+
+        def mmult(m, f):
+            return [ e*f for e in m]
+
+        dist = 25_000 #  253_000*2
+        m = [dist]*6
+        mn = mmult(m, -2)
+
+        try:
+            for i in range(2):
+                p.rmove(m)
+                p.rmove(mn)
+                p.rmove(m)
+                #p.runempty(cb, 10)
+
+            p.runempty(cb, 20)
+            p.info()
+        except:
+            p.stop()
+            p.reset()
+            raise
+
+
+        #p.stop()
+
+    def test_fake_joystick(self):
         from time import time
 
-        j = HidJoystick(interval=0.1)
+        def get_js_move():
+            for e in PygameJoystick(t=.1):
+                button = max([0] + e.button)
+                m = freq_map[int(3 in e.trigger)]
+                yield e, [int(m(a)) for a in e.axes]
 
         logging.basicConfig(level=logging.DEBUG)
 
@@ -91,59 +115,18 @@ class TestJoystick(unittest.TestCase):
         p.reset()
         p.run()
 
-        last = time()
-        while True:
-            jv = j.next_until(.01)
+        move = [10_000, 100, 0, 0, 0, 0 ]
 
-            d_t = time()-last
-            last = time()
-
-            move = jv.moves
-
-            p.jog(.2, move)
-
-            print(round(d_t, 3), move, p.current_state.queue_length)
-
+        for i in range(100):
+            p.jog(.25, move)
             p.update(timeout=0)
-            #sleep(.05)
+            sleep(.1)
+
 
         p.info()
         p.stop()
 
-    def test_jog_moves(self ):
 
-        mf = [ 500, 0, 0, 0, 0, 0]
-        mr = [-500, 0, 0, 0, 0, 0]
-
-        logging.basicConfig(level=logging.DEBUG)
-
-        p = self.init(2000, a=1, usteps=10, axes_name='axes6',
-                      debug_print=False,
-                      outmode=OutMode.OUTPUT_OPENDRAIN);
-
-        p.reset()
-        p.run()
-
-        def run_move(m_0, sleep_t=.2):
-
-            for i in list(range(1, 10)) + list(range(15, 5,-1)):
-                m = (np.array(m_0) * i).tolist()
-                p.jog(.4, m)
-                p.update(timeout=0)
-
-                sleep(sleep_t)
-
-
-
-        last = time()
-        for e in range(2):
-            run_move(mf)
-            run_move(mr)
-            run_move(mr)
-            run_move(mf)
-
-        p.info()
-        p.stop()
 
 
 if __name__ == '__main__':
